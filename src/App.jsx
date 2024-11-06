@@ -1,16 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
-import Header from './components/Header'; 
 import SearchSection from './components/SearchSection';
 import CurrentWeather from './components/CurrentWeather';
 import DailyWeatherItem from './components/DailyWeatherItem';
+import DetailedWeather from './components/DetailedWeather';
 import { weatherCodes } from './constants';
 import NoResultsDiv from './components/NoResultsDiv';
+import Header from './components/Header';
 
 const App = () => {
   const API_KEY = import.meta.env.VITE_API_KEY;
 
   const [currentWeather, setCurrentWeather] = useState({});
   const [dailyForecast, setDailyForecast] = useState([]);
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [isTodaySelected, setIsTodaySelected] = useState(false);
   const [hasNoResults, setHasNoResults] = useState(false);
   const searchInputRef = useRef(null);
 
@@ -25,7 +28,6 @@ const App = () => {
 
       const temperature = Math.floor(data.current.temp_c);
       const description = data.current.condition.text;
-
       const weatherIcon = Object.keys(weatherCodes).find(icon => weatherCodes[icon].includes(data.current.condition.code));
 
       setCurrentWeather({ temperature, description, weatherIcon });
@@ -34,33 +36,58 @@ const App = () => {
       setDailyForecast(next5days);
 
       searchInputRef.current.value = data.location.name;
-      console.log(data);
-
     } catch {
       setHasNoResults(true);
     }
   };
 
   useEffect(() => {
-    const defaultCity = "Panadura";
+    const defaultCity = 'Panadura';
     const API_URL = `http://api.weatherapi.com/v1/forecast.json?key=${API_KEY}&q=${defaultCity}&days=6`;
     getWeatherDetails(API_URL);
   }, []);
 
+  const handleDayClick = (day) => {
+    const today = new Date().toISOString().split('T')[0];
+    if (day.date === today) {
+      if (isTodaySelected) {
+        setSelectedDay(null);
+        setIsTodaySelected(false);
+      } else {
+        setSelectedDay(day);
+        setIsTodaySelected(true);
+      }
+    } else {
+      setSelectedDay(day);
+      setIsTodaySelected(false);
+    }
+  };
+
   return (
     <div className="container">
-      <Header /> 
+      <Header />
       <SearchSection getWeatherDetails={getWeatherDetails} searchInputRef={searchInputRef} />
 
       {hasNoResults ? (
         <NoResultsDiv />
       ) : (
         <div className="weather-section">
-          <CurrentWeather currentWeather={currentWeather} />
+          {!selectedDay ? (
+            <CurrentWeather currentWeather={currentWeather} />
+          ) : (
+            <DetailedWeather day={selectedDay} />
+          )}
+
           <div className="daily-forecast">
             <ul className="weather-list">
               {dailyForecast.map((day, index) => (
-                <DailyWeatherItem key={day.date} day={day} index={index} />
+                <DailyWeatherItem 
+                  key={day.date} 
+                  day={day} 
+                  index={index} 
+                  onClick={() => handleDayClick(day)} 
+                  isSelected={selectedDay?.date === day.date} 
+                />
               ))}
             </ul>
           </div>
